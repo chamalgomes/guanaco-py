@@ -28,6 +28,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+      
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,11 +56,20 @@ jobs:
           # ./scripts/releases-to-pep-503.sh index/whl/cu125 '^[v]?[0-9]+\.[0-9]+\.[0-9]+-cu124$'
           # ./scripts/releases-to-pep-503.sh index/whl/cu126 '^[v]?[0-9]+\.[0-9]+\.[0-9]+-cu124$'
           ./scripts/releases-to-pep-503.sh index/whl/metal '^[v]?[0-9]+\.[0-9]+\.[0-9]+-metal$'
+
+      - name: List output
+        run: |
+          echo "PWD: $PWD"
+          ls -la index || true
+          ls -la index/whl || true
+          ls -la index/whl/cpu || true
+          
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
           # Upload entire repository
           path: 'index'
+          
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
