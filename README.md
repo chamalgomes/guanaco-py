@@ -122,110 +122,6 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install llama-cpp-py
 ```
 </details>
 
-<details>
-<summary>CUDA</summary>
-
-To install with CUDA support, set the `GGML_CUDA=on` environment variable before installing:
-
-```bash
-CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
-```
-
-**Pre-built Wheel (New)**
-
-It is also possible to install a pre-built wheel with CUDA support. As long as your system meets some requirements:
-
-- CUDA Version is 12.1, 12.2, 12.3, 12.4 or 12.5
-- Python Version is 3.10, 3.11 or 3.12
-
-```bash
-pip install llama-cpp-python \
-  --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/<cuda-version>
-```
-
-Where `<cuda-version>` is one of the following:
-- `cu121`: CUDA 12.1
-- `cu122`: CUDA 12.2
-- `cu123`: CUDA 12.3
-- `cu124`: CUDA 12.4
-- `cu125`: CUDA 12.5
-
-For example, to install the CUDA 12.1 wheel:
-
-```bash
-pip install llama-cpp-python \
-  --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
-```
-
-</details>
-
-<details>
-<summary>Metal</summary>
-
-To install with Metal (MPS), set the `GGML_METAL=on` environment variable before installing:
-
-```bash
-CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python
-```
-
-**Pre-built Wheel (New)**
-
-It is also possible to install a pre-built wheel with Metal support. As long as your system meets some requirements:
-
-- MacOS Version is 11.0 or later
-- Python Version is 3.10, 3.11 or 3.12
-
-```bash
-pip install llama-cpp-python \
-  --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/metal
-```
-
-</details>
-
-<details>
-<summary>hipBLAS (ROCm)</summary>
-
-To install with hipBLAS / ROCm support for AMD cards, set the `GGML_HIPBLAS=on` environment variable before installing:
-
-```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install llama-cpp-python
-```
-
-</details>
-
-<details>
-<summary>Vulkan</summary>
-
-To install with Vulkan support, set the `GGML_VULKAN=on` environment variable before installing:
-
-```bash
-CMAKE_ARGS="-DGGML_VULKAN=on" pip install llama-cpp-python
-```
-
-</details>
-
-<details>
-<summary>SYCL</summary>
-
-To install with SYCL support, set the `GGML_SYCL=on` environment variable before installing:
-
-```bash
-source /opt/intel/oneapi/setvars.sh   
-CMAKE_ARGS="-DGGML_SYCL=on -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install llama-cpp-python
-```
-</details>
-
-<details>
-<summary>RPC</summary>
-
-To install with RPC support, set the `GGML_RPC=on` environment variable before installing:
-
-```bash
-source /opt/intel/oneapi/setvars.sh   
-CMAKE_ARGS="-DGGML_RPC=on" pip install llama-cpp-python
-```
-</details>
-
 
 ### Windows Notes
 
@@ -240,33 +136,6 @@ $env:CMAKE_ARGS = "-DGGML_OPENBLAS=on -DCMAKE_C_COMPILER=C:/w64devkit/bin/gcc.ex
 ```
 
 See the above instructions and set `CMAKE_ARGS` to the BLAS backend you want to use.
-</details>
-
-### MacOS Notes
-
-Detailed MacOS Metal GPU install documentation is available at [docs/install/macos.md](https://llama-cpp-python.readthedocs.io/en/latest/install/macos/)
-
-<details>
-<summary>M1 Mac Performance Issue</summary>
-
-Note: If you are using Apple Silicon (M1) Mac, make sure you have installed a version of Python that supports arm64 architecture. For example:
-
-```bash
-wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh
-bash Miniforge3-MacOSX-arm64.sh
-```
-
-Otherwise, while installing it will build the llama.cpp x86 version which will be 10x slower on Apple Silicon (M1) Mac.
-</details>
-
-<details>
-<summary>M Series Mac Error: `(mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64'))`</summary>
-
-Try installing with
-
-```bash
-CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 -DGGML_METAL=on" pip install --upgrade --verbose --force-reinstall --no-cache-dir llama-cpp-python
-```
 </details>
 
 ### Upgrading and Reinstalling
@@ -286,7 +155,6 @@ from llama_cpp import Llama
 
 llm = Llama(
       model_path="./models/7B/llama-model.gguf",
-      # n_gpu_layers=-1, # Uncomment to use GPU acceleration
       # seed=1337, # Uncomment to set a specific seed
       # n_ctx=2048, # Uncomment to increase the context window
 )
