@@ -168,6 +168,10 @@ jobs:
     needs: [get_version, build_wheels_cpu]
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Necesario para git tag/push
+
       - name: Download Linux CPU wheels
         uses: actions/download-artifact@v6
         with:
@@ -180,13 +184,12 @@ jobs:
           name: wheel-cpu-windows-2022
           path: dist
 
-      - name: Delete existing release and tag (idempotent)
+      - name: Delete existing release if exists
         run: |
           tag="v${{ needs.get_version.outputs.version }}"
           gh release delete "$tag" --yes || true
-          git push --delete origin "$tag" || true
 
-      - name: Create release
+      - name: Force create tag and release
         run: |
           tag="v${{ needs.get_version.outputs.version }}"
           git tag -f "$tag"
@@ -206,21 +209,23 @@ jobs:
       matrix:
         short: [cu121, cu122, cu123, cu124]
     steps:
-      - name: Download all Python versions for this CUDA
-        run: |
-          for py in 3.9 3.10 3.11 3.12; do
-            gh run download -R ${{ github.repository }} --name wheel-cuda-${py}-${{ matrix.short }} --dir dist
-          done
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Delete existing release and tag (idempotent)
+      - name: Download wheels for this CUDA version
+        run: |
+          mkdir -p dist
+          for py in 3.9 3.10 3.11 3.12; do
+            actions/download-artifact@v6 --name wheel-cuda-${py}-${{ matrix.short }} --path dist
+          done
+
+      - name: Delete existing release if exists
         run: |
           tag="v${{ needs.get_version.outputs.version }}-${{ matrix.short }}"
           gh release delete "$tag" --yes || true
-          git push --delete origin "$tag" || true
 
-      - name: Create release
+      - name: Force create tag and release
         run: |
           tag="v${{ needs.get_version.outputs.version }}-${{ matrix.short }}"
           git tag -f "$tag"
@@ -265,7 +270,7 @@ jobs:
               'cu124': {'tag': f'v{version}-cu124', 'label': 'CUDA 12.4'},
           }
 
-          package_name = "llama-cpp-python"  # Normalized name
+          package_name = "llama-cpp-python"
           available_configs = []
 
           for config, info in configs.items():
@@ -281,7 +286,6 @@ jobs:
               if not wheels:
                   continue
 
-              # Create package subdir and PEP 503 index inside
               package_dir = f'dist/whl/{config}/{package_name}'
               os.makedirs(package_dir, exist_ok=True)
 
@@ -306,10 +310,9 @@ jobs:
               with open(f'{package_dir}/index.html', 'w', encoding='utf-8') as f:
                   f.write('\n'.join(html))
 
-              print(f"✓ Generated PEP 503 index for {info['label']} at whl/{config}/{package_name}/")
+              print(f"✓ Generated PEP 503 index for {info['label']}")
               available_configs.append((config, info['label']))
 
-          # Root index (bonito como antes)
           root_html = [
               '<!DOCTYPE html>',
               '<html>',
@@ -329,8 +332,8 @@ jobs:
               '  </head>',
               '  <body>',
               '    <h1>🦙 llama-cpp-python Wheels</h1>',
-              '    <p>Pre-compiled wheels hosted on GitHub Releases. Use the commands below for installation.</p>',
-              '    <p><small>Note: pip may warn about no hash verification – this is safe as downloads are direct from GitHub.</small></p>'
+              '    <p>Pre-compiled wheels with CPU and CUDA support (hosted on GitHub Releases).</p>',
+              '    <p><small>Note: pip may warn about no hash verification – safe as downloads are direct from GitHub.</small></p>'
           ]
 
           for config, label in available_configs:
@@ -338,17 +341,17 @@ jobs:
               root_html.extend([
                   '    <div class="config">',
                   f'      <h2>{label}</h2>',
-                  f'      <p><strong>Install command:</strong></p>',
+                  f'      <p><strong>Install:</strong></p>',
                   f'      <code>pip install llama-cpp-python --extra-index-url {index_url}</code>',
-                  '      <p><strong>Force only wheels (recommended on Windows):</strong></p>',
+                  f'      <p><strong>Force wheels only (recommended on Windows):</strong></p>',
                   f'      <code>pip install llama-cpp-python --only-binary=:all: --extra-index-url {index_url}</code>',
-                  f'      <p><a href="whl/{config}/{package_name}/">View raw PEP 503 index →</a></p>',
+                  f'      <p><a href="whl/{config}/{package_name}/">View PEP 503 index →</a></p>',
                   '    </div>'
               ])
 
           root_html.extend([
               '    <hr>',
-              '    <p><small>Generated automatically by GitHub Actions • Wheels in GitHub Releases for history</small></p>',
+              '    <p><small>Generated by GitHub Actions • Wheels in Releases for history</small></p>',
               '  </body>',
               '</html>'
           ])
@@ -364,9 +367,9 @@ jobs:
           cat > dist/README.md << 'EOF'
           # 🦙 llama-cpp-python Wheels
           
-          Pre-compiled wheels with CPU and CUDA support (hosted on GitHub Releases).
+          Pre-compiled wheels with CPU and CUDA support.
           
-          See the main page for installation commands and available configurations.
+          See main page for installation commands.
           
           **Repository**: [${{ github.repository }}](https://github.com/${{ github.repository }})
           
