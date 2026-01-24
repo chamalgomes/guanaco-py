@@ -69,7 +69,7 @@ NOTE: Sometimes i recomend run this instead:
 
 ```bash
 pip install llama-cpp-python \
-  --only-binary=:all: --extra-index-url https://TheBigEye.github.io/llama-cpp-python/whl/cpu/
+  --only-binary=:all: --extra-index-url https://thebigeye.github.io/llama-cpp-python/whl/cpu/
 ```
 
 ### Installation Configuration
