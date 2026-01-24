@@ -1,6 +1,11 @@
-# Links for {package_name}
-
 name: Build and Publish Wheels
+
+# NOTE: This was a headcache to set up GitHub Actions for building and publishing wheels.
+# - This workflow builds wheels for CPU and CUDA (12.1 to 12.4) on multiple Python versions.
+# - It creates GitHub Releases for each build and uploads the wheels there.
+# - It generates a PEP 503-compliant simple index for installing via pip from GitHub Pages.
+# - The workflow is triggered on new tags (v*), manual dispatch, and weekly schedule.
+# This could broke on any changes to the repo structure or GitHub Actions environment. (i need make this more robust eventually)
 
 on:
   workflow_dispatch:
@@ -9,14 +14,17 @@ on:
   schedule:
     - cron: '0 0 * * 0'
 
+# permissions needed for releases and GitHub Pages
 permissions:
   contents: write
   pages: write
   id-token: write
 
+# limit concurrent, i mean, don't run multiple builds at once
 concurrency:
   group: "pages"
   cancel-in-progress: false
+
 
 jobs:
   get_version:
@@ -29,6 +37,8 @@ jobs:
       - name: Extract version
         id: set-version
         shell: pwsh
+
+        # extract __version__ from llama_cpp/__init__.py
         run: |
           $version = Select-String -Path "llama_cpp/__init__.py" -Pattern '__version__ = "([^"]+)"' | % { $_.Matches.Groups[1].Value }
           Write-Output "version=$version" >> $env:GITHUB_OUTPUT
@@ -155,7 +165,7 @@ jobs:
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         env:
-          RUST_LOG: trace        
+          RUST_LOG: trace
         run: |
           python -m pip install --upgrade pip
           python -m pip install uv
@@ -177,6 +187,12 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           overwrite: true
+
+  # Collect and Release Jobs
+  # Here we collect the built wheels and create GitHub Releases for each configuration
+  # if a release with the same tag exists, we delete it first to avoid conflicts
+  # then we create a new release and upload the wheels, overwriting existing assets if any
+  # This ensures that the latest wheels are always available under the same release tags
 
   collect_cpu:
     name: Collect and Release CPU Wheels
@@ -209,7 +225,7 @@ jobs:
           tag="v${{ needs.get_version.outputs.version }}"
           git tag -f "$tag"
           git push -f origin "$tag"
-          gh release create "$tag" --title "CPU wheels v${{ needs.get_version.outputs.version }}" --notes "Automated build"
+          gh release create "$tag" --title "v${{ needs.get_version.outputs.version }}" --notes "Automated build"
 
       - name: Upload wheels
         run: gh release upload "v${{ needs.get_version.outputs.version }}" dist/*.whl --clobber
@@ -243,19 +259,23 @@ jobs:
           tag="v${{ needs.get_version.outputs.version }}-${{ matrix.short }}"
           git tag -f "$tag"
           git push -f origin "$tag"
-          gh release create "$tag" --title "CUDA ${{ matrix.short }} wheels v${{ needs.get_version.outputs.version }}" --notes "Automated build"
+          gh release create "$tag" --title "v${{ needs.get_version.outputs.version }}-${{ matrix.short }}" --notes "Automated build"
 
       - name: Upload wheels
         run: gh release upload "v${{ needs.get_version.outputs.version }}-${{ matrix.short }}" dist/*.whl --clobber
 
+  # Generate PEP 503-compliant simple index for pip installation from GitHub Pages
+  # See: https://peps.python.org/pep-0503/
   generate_pypi_index:
     name: Generate PyPI Index
     needs: [get_version, collect_cpu, collect_cuda]
     runs-on: ubuntu-22.04
     env:
       GITHUB_TOKEN: ${{ github.token }}
+
     steps:
       - name: Create base directory
+        # TODO: make this less hardcoded
         run: mkdir -p dist/whl/{cpu,cu121,cu122,cu123,cu124}
 
       - name: Generate PEP 503 indices using GitHub API
@@ -264,6 +284,10 @@ jobs:
           REPO: ${{ github.repository }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
+
+        # Due to eventual consistency delays in GitHub Releases API, we implement retries here
+        # so that the action waits for the releases to be available and avoid missing assets and wheels.
+        # Yes, i could have a external script, but this is easier to manage in one file for now.
         run: |
           python - << 'PYEOF'
           import os
@@ -278,6 +302,8 @@ jobs:
 
           package_name = "llama-cpp-python"
 
+          # Define configurations and their corresponding release tags
+          # by example: 'cu121' -> 'v{version}-cu121'
           configs = {
               'cpu': {'tag': f'v{version}', 'label': 'CPU'},
               'cu121': {'tag': f'v{version}-cu121', 'label': 'CUDA 12.1'},
@@ -286,6 +312,7 @@ jobs:
               'cu124': {'tag': f'v{version}-cu124', 'label': 'CUDA 12.4'},
           }
 
+          # GitHub API headers
           headers = {
               'Authorization': f'token {token}',
               'Accept': 'application/vnd.github.v3+json'
@@ -293,10 +320,12 @@ jobs:
 
           available_configs = []
 
+          # Process each configuration
+          # For each, fetch the release info and generate the simple index files
           for config, info in configs.items():
               tag = info['tag']
               url = f'https://api.github.com/repos/{repo}/releases/tags/{tag}'
-              
+
               # Retry up to 5 times (releases can take seconds to propagate)
               for attempt in range(5):
                   response = requests.get(url, headers=headers)
@@ -347,7 +376,7 @@ jobs:
               '  <body>',
               '    <h1>🦙 llama-cpp-python Wheels</h1>',
               '    <p>Pre-compiled wheels with CPU and CUDA support (hosted on GitHub Releases).</p>',
-              '    <p>Note: pip may warn about no hash verification – safe as downloads are direct from GitHub.</p>',
+              '    <p>Note: pip may warn about no hash verification - safe as downloads are direct from GitHub.</p>',
           ]
 
           for config, label in available_configs:
@@ -374,15 +403,17 @@ jobs:
           print("✓ Generated root index")
           PYEOF
 
+      # Create README for the GitHub Pages site
+      # TODO: make it more beautiful later
       - name: Create README
         run: |
           cat > dist/README.md << 'EOF'
           # 🦙 llama-cpp-python Wheels
-          
+
           Pre-compiled wheels with CPU and CUDA support.
-          
+
           See main page for installation commands.
-          
+
           **Repository**: https://github.com/${{ github.repository }}
           EOF
 
