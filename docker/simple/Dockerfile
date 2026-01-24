@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-bookworm
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
@@ -6,6 +6,9 @@ RUN apt-get update && apt-get upgrade -y && \
         build-essential \
         cmake \
         ninja-build \
+        clang \
+        libclang-dev \
+        libomp-dev \
         libopenblas-dev \
         g++ \
         && apt-get clean && \
@@ -17,6 +20,9 @@ COPY . /app
 
 RUN pip install --upgrade pip
 RUN pip install pytest scikit-build setuptools fastapi uvicorn sse-starlette pydantic-settings starlette-context
+
+ENV CMAKE_GENERATOR="Ninja"
+ENV CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_NO_ACCELERATE=ON"
 
 RUN pip install .[server] --verbose --no-cache-dir
 
