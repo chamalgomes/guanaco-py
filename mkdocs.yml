@@ -1,5 +1,5 @@
 site_name: llama-cpp-python
-repo_url: https://github.com/TheBigEye/llama-cpp-python-cpu
+repo_url: https://github.com/TheBigEye/llama-cpp-python
 
 theme:
   name: material
