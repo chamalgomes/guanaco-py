@@ -42,8 +42,8 @@ jobs:
         with:
           context: .
           file: docker/simple/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+          platforms: linux/amd64
+          push: true
           tags: |
             ghcr.io/thebigeye/llama-cpp-python:latest
             ghcr.io/thebigeye/llama-cpp-python:${{ steps.version.outputs.tag }}
