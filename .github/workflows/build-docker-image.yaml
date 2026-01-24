@@ -2,19 +2,26 @@ name: Build Docker Image
 
 on:
   workflow_dispatch:
+
+  # Trigger on tag push
   push:
     tags:
-      - 'v*'
+      - 'v*' # Matches tags starting with 'v', like 'v1.0', 'v2.1.3', etc.
+
 
 jobs:
+	# Build and push Docker image
   docker:
     runs-on: ubuntu-22.04
+
     steps:
+			# Checkout repository
       - name: Checkout
         uses: actions/checkout@v6
         with:
           submodules: recursive
 
+			# Set up QEMU and Docker Buildx
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -42,7 +49,10 @@ jobs:
         with:
           context: .
           file: docker/simple/Dockerfile
+
+					# Currently only building for linux/amd64, due to ARM issues with some dependencies
           platforms: linux/amd64
+
           push: true
           tags: |
             ghcr.io/thebigeye/llama-cpp-python:latest
