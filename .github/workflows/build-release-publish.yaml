@@ -106,11 +106,10 @@ jobs:
           MAMBA_NO_LOW_SPEED_LIMIT: "1"
         run: |
           mamba install -y 'cuda' -c nvidia/label/cuda-$env:CUDAVER
-          python -m pip install build wheel
+          python -m pip install build wheel requests
 
       - name: Build Wheel
         run: |
-          $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:CUDA_PATH = $env:CONDA_PREFIX
           $env:CUDA_HOME = $env:CONDA_PREFIX
           $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
@@ -118,8 +117,7 @@ jobs:
             $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
           }
           $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all'
-          $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
+          $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all -DGGML_CUDA_FORCE_MMQ=ON'
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           python -m build --wheel
 
@@ -230,29 +228,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download wheels py3.9
+      - name: Download wheels for ${{ matrix.short }}
         uses: actions/download-artifact@v6
         with:
-          name: wheel-cuda-3.9-${{ matrix.short }}
+          pattern: wheel-cuda-*-${{ matrix.short }}
           path: dist
-
-      - name: Download wheels py3.10
-        uses: actions/download-artifact@v6
-        with:
-          name: wheel-cuda-3.10-${{ matrix.short }}
-          path: dist
-
-      - name: Download wheels py3.11
-        uses: actions/download-artifact@v6
-        with:
-          name: wheel-cuda-3.11-${{ matrix.short }}
-          path: dist
-
-      - name: Download wheels py3.12
-        uses: actions/download-artifact@v6
-        with:
-          name: wheel-cuda-3.12-${{ matrix.short }}
-          path: dist
+          merge-multiple: true
 
       - name: Delete existing release if exists
         run: gh release delete "v${{ needs.get_version.outputs.version }}-${{ matrix.short }}" --yes || true
@@ -272,25 +253,26 @@ jobs:
     needs: [get_version, collect_cpu, collect_cuda]
     runs-on: ubuntu-22.04
     env:
-      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Create base directory
         run: mkdir -p dist/whl/{cpu,cu121,cu122,cu123,cu124}
 
-      - name: Generate PEP 503 indices
+      - name: Generate PEP 503 indices using GitHub API
         env:
           VERSION: ${{ needs.get_version.outputs.version }}
           REPO: ${{ github.repository }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          python << 'PYEOF'
+          python - << 'PYEOF'
           import os
-          import subprocess
-          import json
+          import requests
+          import time
 
           repo = os.environ['REPO']
           version = os.environ['VERSION']
+          token = os.environ['GITHUB_TOKEN']
           repo_owner = os.environ['REPO_OWNER']
           repo_name = os.environ['REPO_NAME']
 
@@ -304,60 +286,64 @@ jobs:
               'cu124': {'tag': f'v{version}-cu124', 'label': 'CUDA 12.4'},
           }
 
+          headers = {
+              'Authorization': f'token {token}',
+              'Accept': 'application/vnd.github.v3+json'
+          }
+
           available_configs = []
 
           for config, info in configs.items():
               tag = info['tag']
-              try:
-                  output = subprocess.check_output(['gh', 'release', 'view', tag, '--json', 'assets'])
-                  data = json.loads(output)
-                  wheels = sorted([a['name'] for a in data['assets'] if a['name'].endswith('.whl')])
-              except Exception as e:
-                  print(f"✗ No release/wheels for {info['label']}: {e}")
+              url = f'https://api.github.com/repos/{repo}/releases/tags/{tag}'
+              
+              # Retry up to 5 times (releases can take seconds to propagate)
+              for attempt in range(5):
+                  response = requests.get(url, headers=headers)
+                  if response.status_code == 200:
+                      data = response.json()
+                      wheels = sorted([asset['name'] for asset in data.get('assets', []) if asset['name'].endswith('.whl')])
+                      break
+                  else:
+                      print(f"Attempt {attempt+1}: Release {tag} not ready yet (status {response.status_code})")
+                      time.sleep(10)
+              else:
+                  print(f"✗ Failed to fetch release {tag}")
                   wheels = []
 
               if not wheels:
+                  print(f"✗ No wheels found for {info['label']}")
                   continue
 
-              # Simple index en /whl/{config}/index.html (exactamente como abetlen)
+              # Simple index: /whl/{config}/index.html
               config_dir = f'dist/whl/{config}'
               os.makedirs(config_dir, exist_ok=True)
               with open(f'{config_dir}/index.html', 'w', encoding='utf-8') as f:
-                  f.write('<!DOCTYPE html>\n')
-                  f.write('<html>\n')
-                  f.write('  <head><title>simple index</title></head>\n')
-                  f.write('  <body>\n')
+                  f.write('<!DOCTYPE html>\n<html>\n  <head><title>simple index</title></head>\n  <body>\n')
                   f.write(f'    <a href="{package_name}/">{package_name}</a><br/>\n')
-                  f.write('  </body>\n')
-                  f.write('</html>\n')
+                  f.write('  </body>\n</html>\n')
 
-              # Lista de wheels en /whl/{config}/{package_name}/index.html (sin hash, sin <h2> extra, igual a abetlen)
+              # Project page: /whl/{config}/{package_name}/index.html
               package_dir = f'{config_dir}/{package_name}'
               os.makedirs(package_dir, exist_ok=True)
               with open(f'{package_dir}/index.html', 'w', encoding='utf-8') as f:
-                  f.write('<!DOCTYPE html>\n')
-                  f.write('<html>\n')
-                  f.write('  <head>\n')
+                  f.write('<!DOCTYPE html>\n<html>\n  <head>\n')
                   f.write(f'    <title>Links for {package_name}</title>\n')
-                  f.write('  </head>\n')
-                  f.write('  <body>\n')
+                  f.write('  </head>\n  <body>\n')
                   f.write(f'    <h1>Links for {package_name}</h1>\n')
                   for wheel in wheels:
-                      url = f"https://github.com/{repo}/releases/download/{tag}/{wheel}"
-                      f.write(f'    <a href="{url}">{wheel}</a><br/>\n')
-                  f.write('  </body>\n')
-                  f.write('</html>\n')
+                      download_url = f"https://github.com/{repo}/releases/download/{tag}/{wheel}"
+                      f.write(f'    <a href="{download_url}">{wheel}</a><br/>\n')
+                  f.write('  </body>\n</html>\n')
 
               print(f"✓ Generated indices for {info['label']} ({len(wheels)} wheels)")
               available_configs.append((config, info['label']))
 
-          # Página raíz (mejorada un poco para claridad)
-          root_html = [
+          # Root page
+          root_lines = [
               '<!DOCTYPE html>',
               '<html>',
-              '  <head>',
-              '    <title>llama-cpp-python - PyPI Index</title>',
-              '  </head>',
+              '  <head><title>llama-cpp-python - PyPI Index</title></head>',
               '  <body>',
               '    <h1>🦙 llama-cpp-python Wheels</h1>',
               '    <p>Pre-compiled wheels with CPU and CUDA support (hosted on GitHub Releases).</p>',
@@ -366,17 +352,16 @@ jobs:
 
           for config, label in available_configs:
               index_url = f"https://{repo_owner}.github.io/{repo_name}/whl/{config}/"
-              root_html.extend([
+              root_lines.extend([
                   f'    <h2>{label}</h2>',
                   '    <p><strong>Install:</strong></p>',
                   f'    <p><code>pip install llama-cpp-python --extra-index-url {index_url}</code></p>',
-                  '    <p><strong>Force wheels only (recommended on Windows):</strong></p>',
+                  '    <p><strong>Force wheels only:</strong></p>',
                   f'    <p><code>pip install llama-cpp-python --only-binary=:all: --extra-index-url {index_url}</code></p>',
-                  f'    <p><a href="whl/{config}/">Simple directory index →</a></p>',
-                  f'    <p><a href="whl/{config}/{package_name}/">Full wheel list (PEP 503) →</a></p>',
+                  f'    <p><a href="whl/{config}/">Simple index →</a> | <a href="whl/{config}/{package_name}/">Full wheel list →</a></p>',
               ])
 
-          root_html.extend([
+          root_lines.extend([
               '    <hr/>',
               '    <p>Generated by GitHub Actions • Wheels in Releases for history</p>',
               '  </body>',
@@ -384,7 +369,7 @@ jobs:
           ])
 
           with open('dist/index.html', 'w', encoding='utf-8') as f:
-              f.write('\n'.join(root_html))
+              f.write('\n'.join(root_lines))
 
           print("✓ Generated root index")
           PYEOF
