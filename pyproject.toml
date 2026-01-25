@@ -9,9 +9,12 @@ description = "Python bindings for the llama.cpp library"
 readme = "README.md"
 license = { text = "MIT" }
 
+# Original llama-cpp-python author
 authors = [
     { name = "Andrei Betlen", email = "abetlen@gmail.com" },
 ]
+
+# This repo maintainer (me)
 maintainers = [
     { name = "Green", email = "thebigeyedev@gmail.com" },
 ]
