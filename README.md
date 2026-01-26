@@ -41,20 +41,26 @@ Documentation is available at [https://llama-cpp-python.readthedocs.io/en/latest
 
 ## Installation
 
-Requirements:
-
+**Requirements:**
   - Python 3.8+
   - C compiler
       - Linux: gcc or clang
-      - Windows: Visual Studio or MinGW
+      - Windows: Visual Studio or MinGW (MSYS2)
 
-To install the package, run:
+**From Source**
+> [!NOTE]
+> You must have Git and a C compiler, or MingW with Git in the PATH installed.
 
 ```bash
-pip install llama-cpp-python
+pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 
-This will also build `llama.cpp` from source and install it alongside this python package.
+If you want install from an specific release, by exmaple `v0.4.0`:
+```bash
+pip install -U git+https://github.com/TheBigEye/guanaco-py@v0.4.0
+```
+
+This will build `llama.cpp` from source and install it alongside this python package.
 
 If this fails, add `--verbose` to the `pip install` see the full cmake build log.
 
@@ -63,15 +69,16 @@ If this fails, add `--verbose` to the `pip install` see the full cmake build log
 It is also possible to install a pre-built wheel with basic CPU support.
 
 ```bash
-pip install llama-cpp-python \
-  --extra-index-url https://thebigeye.github.io/llama-cpp-python/whl/cpu
+pip install guanaco-py \
+  --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cpu
 ```
 
-NOTE: Sometimes i recomend run this instead:
+> [!NOTE]
+> Sometimes I recommend running this in case Pip can't find any wheel.
 
 ```bash
-pip install llama-cpp-python \
-  --only-binary=:all: --extra-index-url https://thebigeye.github.io/llama-cpp-python/whl/cpu/
+pip install guanaco-py \
+  --only-binary=:all: --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cpu/
 ```
 
 ### Installation Configuration
@@ -86,13 +93,13 @@ All `llama.cpp` cmake build options can be set via the `CMAKE_ARGS` environment 
 ```bash
 # Linux and Mac
 CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" \
-  pip install llama-cpp-python
+  pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 
 ```powershell
 # Windows
 $env:CMAKE_ARGS = "-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
-pip install llama-cpp-python
+pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 </details>
 
@@ -103,14 +110,14 @@ They can also be set via `pip install -C / --config-settings` command and saved 
 
 ```bash
 pip install --upgrade pip # ensure pip is up to date
-pip install llama-cpp-python \
+pip install -U git+https://github.com/TheBigEye/guanaco-py \
   -C cmake.args="-DGGML_BLAS=ON;-DGGML_BLAS_VENDOR=OpenBLAS"
 ```
 
 ```txt
 # requirements.txt
 
-llama-cpp-python -C cmake.args="-DGGML_BLAS=ON;-DGGML_BLAS_VENDOR=OpenBLAS"
+git+https://github.com/TheBigEye/guanaco-py --config-settings cmake.args="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
 ```
 
 </details>
@@ -125,7 +132,7 @@ Below are some common backends, their build commands and any additional environm
 To install with OpenBLAS, set the `GGML_BLAS` and `GGML_BLAS_VENDOR` environment variables before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install llama-cpp-python
+CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 </details>
 
@@ -135,19 +142,19 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install llama-cpp-py
 To install with CUDA support, set the `GGML_CUDA=on` environment variable before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
+CMAKE_ARGS="-DGGML_CUDA=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 
 **Pre-built Wheel (New)**
 
 It is also possible to install a pre-built wheel with CUDA support. As long as your system meets some requirements:
 
-- CUDA Version is 12.1, 12.2, 12.3, 12.4 or 12.5
+- CUDA Version is 12.1, 12.2, 12.3 or 12.4
 - Python Version is 3.10, 3.11 or 3.12
 
 ```bash
-pip install llama-cpp-python \
-  --extra-index-url https://thebigeye.github.io/llama-cpp-python/whl/<cuda-version>
+pip install guanaco-py \
+  --extra-index-url https://thebigeye.github.io/guanaco-py/whl/<cuda-version>
 ```
 
 Where `<cuda-version>` is one of the following:
@@ -155,13 +162,12 @@ Where `<cuda-version>` is one of the following:
 - `cu122`: CUDA 12.2
 - `cu123`: CUDA 12.3
 - `cu124`: CUDA 12.4
-- `cu125`: CUDA 12.5
 
 For example, to install the CUDA 12.1 wheel:
 
 ```bash
-pip install llama-cpp-python \
-  --extra-index-url https://thebigeye.github.io/llama-cpp-python/whl/cu121
+pip install guanaco-py \
+  --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cu121
 ```
 
 </details>
@@ -172,7 +178,7 @@ pip install llama-cpp-python \
 To install with hipBLAS / ROCm support for AMD cards, set the `GGML_HIPBLAS=on` environment variable before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install llama-cpp-python
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 
 </details>
@@ -183,7 +189,7 @@ CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install llama-cpp-python
 To install with Vulkan support, set the `GGML_VULKAN=on` environment variable before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_VULKAN=on" pip install llama-cpp-python
+CMAKE_ARGS="-DGGML_VULKAN=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 
 </details>
@@ -195,7 +201,7 @@ To install with SYCL support, set the `GGML_SYCL=on` environment variable before
 
 ```bash
 source /opt/intel/oneapi/setvars.sh   
-CMAKE_ARGS="-DGGML_SYCL=on -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install llama-cpp-python
+CMAKE_ARGS="-DGGML_SYCL=on -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 </details>
 
@@ -206,7 +212,7 @@ To install with RPC support, set the `GGML_RPC=on` environment variable before i
 
 ```bash
 source /opt/intel/oneapi/setvars.sh   
-CMAKE_ARGS="-DGGML_RPC=on" pip install llama-cpp-python
+CMAKE_ARGS="-DGGML_RPC=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
 ```
 </details>
 
@@ -228,7 +234,7 @@ See the above instructions and set `CMAKE_ARGS` to the BLAS backend you want to 
 
 ### Upgrading and Reinstalling
 
-To upgrade and rebuild `llama-cpp-python` add `--upgrade --force-reinstall --no-cache-dir` flags to the `pip install` command to ensure the package is rebuilt from source.
+To upgrade and rebuild `guanaco-py` add `--upgrade --force-reinstall --no-cache-dir` flags to the `pip install` command to ensure the package is rebuilt from source.
 
 ## High-level API
 
@@ -256,7 +262,7 @@ output = llm(
 print(output)
 ```
 
-By default `llama-cpp-python` generates completions in an OpenAI compatible format:
+By default `guanaco-py` generates completions in an OpenAI compatible format:
 
 ```python
 {
@@ -459,7 +465,7 @@ llm = Llama.from_pretrained(
 
 ### Multi-modal Models
 
-`llama-cpp-python` supports such as llava1.5 which allow the language model to read information from both text and images.
+`guanaco-py` supports such as llava1.5 which allow the language model to read information from both text and images.
 
 Below are the supported multi-modal models and their respective chat handlers (Python API) and chat formats (Server API).
 
@@ -568,7 +574,7 @@ messages = [
 
 ### Speculative Decoding
 
-`llama-cpp-python` supports speculative decoding which allows the model to generate completions based on a draft model.
+`guanaco-py` supports speculative decoding which allows the model to generate completions based on a draft model.
 
 The fastest way to use speculative decoding is through the `LlamaPromptLookupDecoding` class.
 
@@ -618,20 +624,20 @@ llm = Llama(model_path="./models/7B/llama-model.gguf", n_ctx=2048)
 
 ## OpenAI Compatible Web Server
 
-`llama-cpp-python` offers a web server which aims to act as a drop-in replacement for the OpenAI API.
+`guanaco-py` offers a web server which aims to act as a drop-in replacement for the OpenAI API.
 This allows you to use llama.cpp compatible models with any OpenAI compatible client (language libraries, services, etc).
 
 To install the server package and get started:
 
 ```bash
-pip install 'llama-cpp-python[server]'
+pip install 'git+https://github.com/TheBigEye/guanaco-py.git#egg=guanaco-py[server]'
 python3 -m llama_cpp.server --model models/7B/llama-model.gguf
 ```
 
 Similar to Hardware Acceleration section above, you can also install with GPU (cuBLAS) support like this:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install 'llama-cpp-python[server]'
+CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install 'git+https://github.com/TheBigEye/guanaco-py.git#egg=guanaco-py[server]'
 python3 -m llama_cpp.server --model models/7B/llama-model.gguf --n_gpu_layers 35
 ```
 
@@ -664,10 +670,10 @@ python3 -m llama_cpp.server --hf_model_repo_id Qwen/Qwen2-0.5B-Instruct-GGUF --m
 
 ## Docker image
 
-A Docker image is available on [GHCR](https://ghcr.io/abetlen/llama-cpp-python). To run the server:
+A Docker image is available on [GHCR](https://ghcr.io/thebigeye/guanaco-py). To run the server:
 
 ```bash
-docker run --rm -it -p 8000:8000 -v /path/to/models:/models -e MODEL=/models/llama-model.gguf ghcr.io/abetlen/llama-cpp-python:latest
+docker run --rm -it -p 8000:8000 -v /path/to/models:/models -e MODEL=/models/llama-model.gguf ghcr.io/thebigeye/guanaco-py:latest
 ```
 
 [Docker on termux (requires root)](https://gist.github.com/FreddieOliveira/efe850df7ff3951cb62d74bd770dce27) is currently the only known way to run this on phones, see [termux support issue](https://github.com/abetlen/llama-cpp-python/issues/389)
@@ -758,15 +764,6 @@ That being said there are some pre-built binaries available through the Releases
 
 In the future, I would like to provide pre-built binaries and wheels for common platforms and I'm happy to accept any useful contributions in this area.
 This is currently being tracked in [#741](https://github.com/abetlen/llama-cpp-python/issues/741)
-
-### How does this compare to other Python bindings of `llama.cpp`?
-
-I originally wrote this package for my own use with two goals in mind:
-
-- Provide a simple process to install `llama.cpp` and access the full C API in `llama.h` from Python
-- Provide a high-level Python API that can be used as a drop-in replacement for the OpenAI API so existing apps can be easily ported to use `llama.cpp`
-
-Any contributions and changes to this package will be made with these goals in mind.
 
 ## License
 
