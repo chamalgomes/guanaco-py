@@ -98,10 +98,9 @@ jobs:
           MAMBA_DOWNLOAD_FAILFAST: "0"
           MAMBA_NO_LOW_SPEED_LIMIT: "1"
         run: |
-          $cudaVersion = $env:CUDAVER
-          mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
-          python -m pip install build wheel
-
+          mamba install -y cuda-toolkit=$$   {{ matrix.cuda }} cuda-nvcc cuda-cudart-dev -c nvidia/label/cuda-   $${{ matrix.cuda }} -c nvidia -c conda-forge
+          python -m pip install build wheel requests
+          
       - name: Build Wheel
         run: |
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
