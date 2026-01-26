@@ -22,7 +22,7 @@ jobs:
           $matrix = @{
               'os' = @('ubuntu-22.04') #, 'windows-2022')
               'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.1.1", "12.2.2", "12.3.2") # "12.4.1", "12.5.1", "12.6.1")
+              'cuda' = @("12.1.1", "12.2.2", "12.3.2", "12.4.1") #, "12.5.1", "12.6.1")
               'releasetag' = @("basic")
           }
 
@@ -100,9 +100,11 @@ jobs:
         run: |
           $cudaVersion = $env:CUDAVER
           mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
-          python -m pip install build wheel
+          python -m pip install build wheel cmake
+          python -m pip install --upgrade cmake
           
       - name: Build Wheel
+        # Diusabled -DGGML_CUDA_FORCE_MMQ due to issues with Blackwell GPUs
         run: |
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:CUDA_PATH = $env:CONDA_PREFIX
@@ -113,7 +115,7 @@ jobs:
           }
           $env:VERBOSE = '1'
           $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all-major'
-          $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
+          $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=OFF $env:CMAKE_ARGS"
           # if ($env:AVXVER -eq 'AVX') {
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           # }
@@ -131,6 +133,7 @@ jobs:
         with:
           files: dist/*
           # Set tag_name to <tag>-cu<cuda_version>
+          # CUDA_VERSION looks invalid on the editor, but if the workflow finishes so is valid
           tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
