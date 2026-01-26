@@ -55,11 +55,10 @@ jobs:
     steps:
       - name: Define Job Output
         id: set-matrix
-        # FIX FIX: Cuda 12.4 is broken on ubuntu-latest (12.4.1 - cu124)
         run: |
           $pyvers = @("3.9", "3.10", "3.11", "3.12")
-          $cudavers = @("12.1.1", "12.2.2", "12.3.2")
-          $shorts = @("cu121", "cu122", "cu123")
+          $cudavers = @("12.1.1", "12.2.2", "12.3.2", "12.4.1")
+          $shorts = @("cu121", "cu122", "cu123", "cu124")
 
           $includes = @()
 
@@ -282,8 +281,7 @@ jobs:
     steps:
       - name: Create base directory
         # TODO: make this less hardcoded
-        # Cuda 12.4 is broken on ubuntu-latest (12.4.1 - cu124)
-        run: mkdir -p dist/whl/{cpu,cu121,cu122,cu123}
+        run: mkdir -p dist/whl/{cpu,cu121,cu122,cu123,cu124}
 
       - name: Generate PEP 503 indices using GitHub API
         env:
@@ -316,9 +314,7 @@ jobs:
               'cu121': {'tag': f'v{version}-cu121', 'label': 'CUDA 12.1'},
               'cu122': {'tag': f'v{version}-cu122', 'label': 'CUDA 12.2'},
               'cu123': {'tag': f'v{version}-cu123', 'label': 'CUDA 12.3'},
-
-              # Cuda 12.4 is broken on ubuntu-latest (12.4.1 - cu124)
-              #'cu124': {'tag': f'v{version}-cu124', 'label': 'CUDA 12.4'},
+              'cu124': {'tag': f'v{version}-cu124', 'label': 'CUDA 12.4'},
           }
 
           # GitHub API headers
@@ -417,7 +413,7 @@ jobs:
       - name: Create README
         run: |
           cat > dist/README.md << 'EOF'
-          # 🦙 Wheels
+          # 🦙 Guanaco Wheels
 
           Pre-compiled wheels with CPU and CUDA support.
 
