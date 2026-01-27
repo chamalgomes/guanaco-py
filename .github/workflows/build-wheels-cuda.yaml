@@ -127,12 +127,3 @@ jobs:
           python -m build --wheel
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          # Set tag_name to <tag>-cu<cuda_version>
-          # CUDA_VERSION looks invalid on the editor, but if the workflow finishes so is valid
-          tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
