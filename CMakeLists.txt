@@ -3,45 +3,51 @@ cmake_minimum_required(VERSION 3.21)
 project(llama_cpp)
 
 option(LLAMA_BUILD "Build llama.cpp shared library and install alongside python package" ON)
-option(LLAVA_BUILD "Build llava shared library and install alongside python package" ON)
+option(MTMD_BUILD "Build mtmd shared library and install alongside python package" ON)
 
+# Helper function to install targets to Python package directories
 function(llama_cpp_python_install_target target)
     if(NOT TARGET ${target})
         return()
     endif()
 
-    install(
-        TARGETS ${target}
-        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
+    # Define install destinations to avoid code duplication
+    set(INSTALL_DIRS
+        "${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib"
+        "${SKBUILD_PLATLIB_DIR}/llama_cpp/lib"
     )
-    install(
-        TARGETS ${target}
-        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-    )
-    set_target_properties(${target} PROPERTIES
-        INSTALL_RPATH "$ORIGIN"
-        BUILD_WITH_INSTALL_RPATH TRUE
-    )
-    if(UNIX)
-        if(APPLE)
-            set_target_properties(${target} PROPERTIES
-                INSTALL_RPATH "@loader_path"
-                BUILD_WITH_INSTALL_RPATH TRUE
-            )
-        else()
-            set_target_properties(${target} PROPERTIES
-                INSTALL_RPATH "$ORIGIN"
-                BUILD_WITH_INSTALL_RPATH TRUE
+
+    foreach(DIR ${INSTALL_DIRS})
+        install(
+            TARGETS ${target}
+            LIBRARY DESTINATION ${DIR}
+            RUNTIME DESTINATION ${DIR}
+            ARCHIVE DESTINATION ${DIR}
+            FRAMEWORK DESTINATION ${DIR}
+            RESOURCE DESTINATION ${DIR}
+        )
+
+        # Automatically handle Windows DLL installation for each target
+        if (WIN32)
+            install(
+                FILES $<TARGET_RUNTIME_DLLS:${target}>
+                DESTINATION ${DIR}
+                OPTIONAL # Prevent errors if the target has no DLLs
             )
         endif()
+    endforeach()
+
+    # Configure RPATH
+    if(UNIX)
+        set(INSTALL_RPATH_VAL "$ORIGIN")
+        if(APPLE)
+            set(INSTALL_RPATH_VAL "@loader_path")
+        endif()
+
+        set_target_properties(${target} PROPERTIES
+            INSTALL_RPATH "${INSTALL_RPATH_VAL}"
+            BUILD_WITH_INSTALL_RPATH TRUE
+        )
     endif()
 endfunction()
 
@@ -60,26 +66,28 @@ if (LLAMA_BUILD)
     set(CMAKE_SKIP_RPATH FALSE)
 
     # Enable building of the common library
-    set(LLAMA_BUILD_COMMON ON CACHE BOOL "Build llama.cpp common library" FORCE)
+    set(LLAMA_BUILD_COMMON ON CACHE BOOL "llama.cpp: build common utils library" FORCE)
+
+    # Disable building of examples
+    set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "llama.cpp: build examples" FORCE)
+
+    # Disable building of tests
+    set(LLAMA_BUILD_TESTS OFF CACHE BOOL "llama.cpp: build tests" FORCE)
 
     # Disable building curl support
-    set(LLAMA_CURL OFF CACHE BOOL "llama.cpp: enable curl" FORCE)
+    set(LLAMA_CURL OFF CACHE BOOL "llama.cpp: use libcurl to download model from an URL" FORCE)
+
+    # Enable build and link OpenSSL
+    set(LLAMA_OPENSSL ON CACHE BOOL "llama.cpp: build and link OpenSSL" FORCE)
 
     # Architecture detection and settings for Apple platforms
     if (APPLE)
-        # Get the target architecture
-        execute_process(
-            COMMAND uname -m
-            OUTPUT_VARIABLE HOST_ARCH
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-
         # If CMAKE_OSX_ARCHITECTURES is not set, use the host architecture
         if(NOT CMAKE_OSX_ARCHITECTURES)
-            set(CMAKE_OSX_ARCHITECTURES ${HOST_ARCH} CACHE STRING "Build architecture for macOS" FORCE)
+            set(CMAKE_OSX_ARCHITECTURES ${CMAKE_HOST_SYSTEM_PROCESSOR} CACHE STRING "Build architecture for macOS" FORCE)
         endif()
 
-        message(STATUS "Host architecture: ${HOST_ARCH}")
+        message(STATUS "Host architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
         message(STATUS "Target architecture: ${CMAKE_OSX_ARCHITECTURES}")
 
         # Configure based on target architecture
@@ -96,7 +104,6 @@ if (LLAMA_BUILD)
         set(GGML_METAL_EMBED_LIBRARY "ON" CACHE BOOL "ggml: embed metal library" FORCE)
     endif()
 
-
     add_subdirectory(vendor/llama.cpp)
 
     if (WIN32)
@@ -105,45 +112,42 @@ if (LLAMA_BUILD)
         endif()
     endif()
 
-    llama_cpp_python_install_target(llama)
-    llama_cpp_python_install_target(ggml)
+    # Define list of GGML targets to install
+    set(GGML_TARGETS
+        llama
+        ggml
+        ggml-base
+        ggml-blas
+        ggml-cann
+        ggml-cpu
+        ggml-cuda
+        ggml-hexagon
+        ggml-hip
+        ggml-metal
+        ggml-musa
+        ggml-opencl
+        ggml-rpc
+        ggml-sycl
+        ggml-vulkan
+        ggml-webgpu
+        ggml-zdnn
+        ggml-zendnn
+    )
 
-    llama_cpp_python_install_target(ggml-base)
+    # Loop through targets to avoid repetitive function calls
+    foreach(TARGET_NAME ${GGML_TARGETS})
+        llama_cpp_python_install_target(${TARGET_NAME})
+    endforeach()
 
-    llama_cpp_python_install_target(ggml-blas)
-    llama_cpp_python_install_target(ggml-can)
-    llama_cpp_python_install_target(ggml-cpu)
-    llama_cpp_python_install_target(ggml-cuda)
-    llama_cpp_python_install_target(ggml-hexagon)
-    llama_cpp_python_install_target(ggml-hip)
-    llama_cpp_python_install_target(ggml-metal)
-    llama_cpp_python_install_target(ggml-musa)
-    llama_cpp_python_install_target(ggml-rpc)
-    llama_cpp_python_install_target(ggml-sycl)
-    llama_cpp_python_install_target(ggml-vulkan)
-    llama_cpp_python_install_target(ggml-zdnn)
+    if (MTMD_BUILD)
+        if (NOT DEFINED LLAMA_BUILD_NUMBER)
+            set(LLAMA_BUILD_NUMBER        ${BUILD_NUMBER})
+        endif()
 
-    # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
-    if (WIN32)
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:llama>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:llama>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:ggml>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:ggml>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        )
-    endif()
+        set(LLAMA_INSTALL_VERSION 0.0.${LLAMA_BUILD_NUMBER})
 
-    if (LLAVA_BUILD)
+        add_subdirectory(vendor/llama.cpp/tools/mtmd)
+
         if (LLAMA_CUBLAS OR LLAMA_CUDA)
             add_compile_definitions(GGML_USE_CUBLAS)
             add_compile_definitions(GGML_USE_CUDA)
@@ -153,44 +157,10 @@ if (LLAMA_BUILD)
             add_compile_definitions(GGML_USE_METAL)
         endif()
 
-        # Set version for mtmd (required by upstream CMakeLists.txt)
-        # NOTE: This is a workaround for mtmd build requirements.
-        # Version is set to 0.0.0 for local builds. If upstream adds version
-        # compatibility checks, this may need to match llama.cpp version.
-        if (NOT DEFINED LLAMA_BUILD_NUMBER)
-            set(LLAMA_BUILD_NUMBER 0)
-        endif()
-        set(LLAMA_INSTALL_VERSION 0.0.${LLAMA_BUILD_NUMBER})
-
-        # Building llava
-        add_subdirectory(vendor/llama.cpp/tools/mtmd)
-
         if (WIN32)
             set_target_properties(mtmd PROPERTIES CUDA_ARCHITECTURES OFF)
         endif()
+
         llama_cpp_python_install_target(mtmd)
-        if (WIN32)
-            install(
-                FILES $<TARGET_RUNTIME_DLLS:mtmd>
-                DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-            )
-            install(
-                FILES $<TARGET_RUNTIME_DLLS:mtmd>
-                DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-            )
-        endif()
-
-        # Fix for mtmd build: Add include directory for llama.h
-        # Move these commands after the add_subdirectory call
-        target_include_directories(mtmd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/llama.cpp/include)
-        target_include_directories(mtmd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/llama.cpp/ggml/include)
-
-        if (BUILD_SHARED_LIBS)
-            target_include_directories(mtmd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/llama.cpp/include)
-            target_include_directories(mtmd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/llama.cpp/ggml/include)
-        endif()
-
-        # target_include_directories(llama-llava-cli PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/llama.cpp/include)
-        # target_include_directories(llama-minicpmv-cli PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/llama.cpp/include)
     endif()
 endif()

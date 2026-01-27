@@ -20,16 +20,16 @@ maintainers = [
 ]
 
 dependencies = [
-    "typing-extensions>=4.5.0",
-    "numpy>=1.20.0",
-    "diskcache>=5.6.1",
+    "typing-extensions>=4.8.0",
+    "numpy>=1.21.6,<=2.3.2",
+    "diskcache>=5.6.2",
     "jinja2>=2.11.3",
+    "Pillow>=9.5.0",
 ]
 
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

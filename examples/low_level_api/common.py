@@ -21,8 +21,9 @@ class GptParams:
     ignore_eos: bool = False
     logit_bias: dict[int, float] = field(default_factory=dict)
     top_k: int = 40
+    top_n_sigma: float = -1.00
     top_p: float = 0.95
-    tfs_z: float = 1.00
+
     typical_p: float = 1.00
     temp: float = 0.80
     repeat_penalty: float = 1.10
@@ -32,7 +33,13 @@ class GptParams:
     mirostat: int = 0
     mirostat_tau: float = 5.0
     mirostat_eta: float = 0.1
-
+    xtc_threshold: float = 0.1
+    xtc_probability: float = 0.0
+    dry_multiplier: float = 0.0
+    dry_base: float = 1.75
+    dry_allowed_length: int = 2
+    dry_penalty_last_n:int = 0
+    dry_seq_breakers: list[str] = ["\n", ":", "\"", "*"]
     model: str = "./models/llama-7B/ggml-model.bin"
     prompt: str = ""
     path_session: str = ""
@@ -55,6 +62,7 @@ class GptParams:
     penalize_nl: bool = True
     perplexity: bool = False
     use_mmap: bool = True
+    use_direct_io: bool = True
     use_mlock: bool = False
     mem_test: bool = False
     verbose_prompt: bool = False
@@ -147,14 +155,10 @@ def gpt_params_parse(argv=None):
         "--top_k", type=int, default=40, help="top-k sampling", dest="top_k"
     )
     parser.add_argument(
-        "--top_p", type=float, default=0.95, help="top-p samplin", dest="top_p"
+        "--top_n_sigma", type=int, default=40, help="top-n-sigma sampling", dest="top_n_sigma"
     )
     parser.add_argument(
-        "--tfs",
-        type=float,
-        default=1.0,
-        help="tail free sampling, parameter z (1.0 = disabled)",
-        dest="tfs_z",
+        "--top_p", type=float, default=0.95, help="top-p samplin", dest="top_p"
     )
     parser.add_argument(
         "--temp", type=float, default=0.80, help="temperature", dest="temp"
@@ -178,7 +182,7 @@ def gpt_params_parse(argv=None):
         type=float,
         default=0.0,
         help="repeat alpha frequency penalty (0.0 = disabled)",
-        dest="tfs_z",
+        dest="frequency_penalty",
     )
     parser.add_argument(
         "--presence_penalty",
@@ -207,6 +211,54 @@ def gpt_params_parse(argv=None):
         default=0.1,
         help="Mirostat learning rate, parameter eta",
         dest="mirostat_eta",
+    )
+
+    parser.add_argument(
+        "--xtc_threshold",
+        type=float,
+        default=0.1,
+        help="Sets a minimum probability threshold for tokens to be removed (default: 0.1)",
+        dest="xtc_threshold",
+    )
+
+    parser.add_argument(
+        "--xtc_probability",
+        type=float,
+        default=0.0,
+        help="Sets the chance for token removal (checked once on sampler start) (default: 0.0)",
+        dest="xtc_probability",
+    )
+
+    parser.add_argument(
+        "--dry_multiplier",
+        type=float,
+        default=0.0,
+        help="Set the DRY repetition penalty multiplier. Default is 0.0, which disables DRY.",
+        dest="dry_multiplier",
+    )
+
+    parser.add_argument(
+        "--dry_base",
+        type=float,
+        default=1.75,
+        help="Set the DRY repetition penalty base value. Default is 1.75",
+        dest="dry_base",
+    )
+
+    parser.add_argument(
+        "--dry_allowed_length",
+        type=int,
+        default=2,
+        help="Tokens that extend repetition beyond this receive exponentially increasing penalty. Default is 2",
+        dest="dry_allowed_length",
+    )
+
+    parser.add_argument(
+        "--dry_penalty_last_n",
+        type=int,
+        default=0,
+        help="How many tokens to scan for repetitions. Default is 0, where 0 is disabled and -1 is context size",
+        dest="dry_penalty_last_n",
     )
 
     parser.add_argument(
