@@ -276,8 +276,19 @@ class LlamaContext:
     def __del__(self):
         self.close()
 
+
     def n_ctx(self) -> int:
         return llama_cpp.llama_n_ctx(self.ctx)
+
+    def n_batch(self) -> int:
+        return llama_cpp.llama_n_batch(self.ctx)
+
+    def n_ubatch(self) -> int:
+        return llama_cpp.llama_n_ubatch(self.ctx)
+
+    def n_seq_max(self) -> int:
+        return llama_cpp.llama_n_seq_max(self.ctx)
+
 
     def pooling_type(self) -> int:
         return llama_cpp.llama_pooling_type(self.ctx)
