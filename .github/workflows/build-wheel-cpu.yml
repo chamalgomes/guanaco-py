@@ -6,67 +6,68 @@ on:
     tags: ["v*"]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: recursive
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - name: Install cibuildwheel
-        run: |
-          python -m pip install -U pip
-          python -m pip install -U cibuildwheel wheel
-      - name: Build wheel (CPU only)
-        env:
-          # Build wheels for Python 3.9 to 3.14 on manylinux_x86_64
-          CIBW_BUILD: "cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64 cp314-manylinux_x86_64"
-          CIBW_SKIP: "*-musllinux_*"
-          CIBW_BUILD_VERBOSITY: 1
-          # Use newer manylinux_2_28 image for better compatibility with recent Python versions (3.12+) and modern glibc
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-          CIBW_REPAIR_WHEEL_COMMAND_LINUX: ""
-          CIBW_ENVIRONMENT_LINUX: >-
-            CMAKE_ARGS="-DGGML_CUDA=OFF -DGGML_METAL=OFF -DGGML_VULKAN=OFF -DGGML_BLAS=OFF -DGGML_NATIVE=OFF"
-        run: |
-          python -m cibuildwheel --output-dir wheelhouse
-      - uses: actions/upload-artifact@v6
-        with:
-          name: wheelhouse-linux
-          path: wheelhouse/*.whl
+  build-cpu:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            python-version: "3.13"
+            cibw_build: cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64 cp314-manylinux_x86_64
+            cibw_skip: "*-musllinux_*"
+            cibw_image: manylinux_2_28
+            cibw_repair: ""
+          - os: windows-latest
+            platform: windows
+            python-version: "3.13"
+            cibw_build: cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64 cp314-win_amd64
+            cibw_skip: ""
+            cibw_image: ""
+            cibw_repair: ""
 
-  build-windows:
-    runs-on: windows-2022
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           submodules: recursive
-      - uses: actions/setup-python@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.11"
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Install cibuildwheel
         run: |
-          python -m pip install -U pip
-          python -m pip install -U cibuildwheel wheel
-      - name: Build wheel (CPU only)
+          uv pip install --system -U cibuildwheel wheel
+        shell: bash
+
+      - name: Build wheels (CPU only)
         env:
-          # Build wheels for Python 3.9 to 3.14 on win_amd64
-          CIBW_BUILD: "cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64 cp314-win_amd64"
+          CIBW_BUILD: ${{ matrix.cibw_build }}
+          CIBW_SKIP: ${{ matrix.cibw_skip }}
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_ENVIRONMENT_WINDOWS: >-
+          CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.cibw_image }}
+          CIBW_REPAIR_WHEEL_COMMAND: ${{ matrix.cibw_repair }}
+          CIBW_ENVIRONMENT: >-
             CMAKE_ARGS="-DGGML_CUDA=OFF -DGGML_METAL=OFF -DGGML_VULKAN=OFF -DGGML_BLAS=OFF -DGGML_NATIVE=OFF"
         run: |
-          python -m cibuildwheel --output-dir wheelhouse
-      - name: List wheels
+          cibuildwheel --output-dir wheelhouse
+        shell: bash
+
+      - name: List built wheels
         run: |
-          Get-ChildItem -Path wheelhouse -Recurse
-      - uses: actions/upload-artifact@v6
+          ls -lh wheelhouse/*.whl || dir wheelhouse\*.whl
+        shell: bash
+
+      - name: Upload wheels as artifact
+        uses: actions/upload-artifact@v6
         with:
-          name: wheelhouse-windows
+          name: wheelhouse-${{ matrix.platform }}
           path: wheelhouse/*.whl
