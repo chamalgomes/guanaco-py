@@ -30,7 +30,7 @@ jobs:
         pyver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     name: Linux CUDA ${{ matrix.cuda_config.ver }} Py ${{ matrix.pyver }}
     steps:
-      - name: Install system deps and deadsnakes PPA
+      - name: Install system deps (including real cmake) and deadsnakes PPA
         run: |
           apt update && apt install -y software-properties-common git curl build-essential cmake libssl-dev
           add-apt-repository ppa:deadsnakes/ppa -y
@@ -53,11 +53,14 @@ jobs:
         run: |
           python --version
           uv --version
+          which python
+          cmake --version
           nvcc --version
           nvidia-smi || true
 
-      - name: Install build dependencies
-        run: uv pip install build wheel setuptools packaging cmake
+      - name: Install build dependencies (using --system)
+        run: |
+          uv pip install --system build wheel setuptools packaging
 
       - name: Build wheel
         env:
