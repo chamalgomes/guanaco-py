@@ -137,8 +137,15 @@ jobs:
       - name: Enable long paths
         run: git config --system core.longpaths true
 
+      - name: Verify tools
+        run: |
+          python --version
+          uv --version
+          cmake --version
+          nvcc --version
+
       - name: Install build tools
-        run: uv pip install --system build wheel cmake setuptools packaging
+        run: uv pip install --system build wheel setuptools packaging
 
       - name: Build wheel
         env:
