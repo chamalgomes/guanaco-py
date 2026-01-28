@@ -31,6 +31,8 @@ jobs:
     name: Linux CUDA ${{ matrix.cuda_config.ver }} Py ${{ matrix.pyver }}
     steps:
       - name: Install system dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
           echo "tzdata tzdata/Areas select America" | debconf-set-selections
           echo "tzdata tzdata/Zones/America select New_York" | debconf-set-selections
@@ -39,19 +41,14 @@ jobs:
           apt update && apt install -y software-properties-common git curl build-essential cmake libssl-dev
           add-apt-repository ppa:deadsnakes/ppa -y
           apt update
-
-          if [[ "${{ matrix.pyver }}" == "3.9" ]]; then
-            apt install -y python${{ matrix.pyver }} python${{ matrix.pyver }}-dev python${{ matrix.pyver }}-distutils
-          else
-            apt install -y python${{ matrix.pyver }} python${{ matrix.pyver }}-dev
-          fi
+          apt install -y python${{ matrix.pyver }} python${{ matrix.pyver }}-dev
 
       - name: Set Python symlink and install pip + uv
         run: |
           update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${{ matrix.pyver }} 1
           update-alternatives --install /usr/bin/python python /usr/bin/python${{ matrix.pyver }} 1
-          curl https://bootstrap.pypa.io/get-pip.py | python
-          python -m pip install --upgrade uv
+          python -m ensurepip --upgrade
+          python -m pip install --upgrade pip uv
 
       - name: Checkout repository
         uses: actions/checkout@v4
