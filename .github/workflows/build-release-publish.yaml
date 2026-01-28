@@ -182,6 +182,10 @@ jobs:
             -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.cuda_config.arch }}
             -DGGML_CUDA_FORCE_MMQ=OFF
             -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off
+            -DLLAMA_BUILD_EXAMPLES=OFF
+            -DLLAMA_BUILD_TESTS=OFF
+            -DLLAMA_BUILD_SERVER=OFF
+            -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/cuda/lib64/stubs -lcuda"
         run: python -m build --wheel
 
       - name: List wheels
