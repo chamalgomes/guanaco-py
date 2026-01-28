@@ -50,16 +50,18 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-            python-version: "3.9"
+            python-version: "3.13"
             cibw_build: cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64
             cibw_skip: "*-musllinux_*"
             cibw_image: manylinux_2_28
+            cibw_repair: ""
           - os: windows-latest
             platform: windows
-            python-version: "3.9"
+            python-version: "3.13"
             cibw_build: cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64
             cibw_skip: ""
             cibw_image: ""
+            cibw_repair: ""
 
     steps:
       - name: Checkout repository
@@ -86,6 +88,7 @@ jobs:
           CIBW_SKIP: ${{ matrix.cibw_skip }}
           CIBW_BUILD_VERBOSITY: 1
           CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.cibw_image }}
+          CIBW_REPAIR_WHEEL_COMMAND: ${{ matrix.cibw_repair }}
           CIBW_ENVIRONMENT: >-
             CMAKE_ARGS="-DGGML_CUDA=OFF -DGGML_METAL=OFF -DGGML_VULKAN=OFF -DGGML_BLAS=OFF -DGGML_NATIVE=OFF"
         run: cibuildwheel --output-dir wheelhouse
