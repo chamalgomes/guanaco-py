@@ -5,117 +5,92 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: write
+
 jobs:
   build-cuda:
+    name: Build CUDA ${{ matrix.pyver }} ${{ matrix.cuda_short }}
     runs-on: ubuntu-latest
+    container: ${{ matrix.container_image }}
     strategy:
       fail-fast: false
       matrix:
+        pyver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         include:
-          - python-version: "3.9"
-            cuda: "12.1.1"
-            short: cu121
-          - python-version: "3.10"
-            cuda: "12.1.1"
-            short: cu121
-          - python-version: "3.11"
-            cuda: "12.1.1"
-            short: cu121
-          - python-version: "3.12"
-            cuda: "12.1.1"
-            short: cu121
-          - python-version: "3.9"
-            cuda: "12.2.2"
-            short: cu122
-          - python-version: "3.10"
-            cuda: "12.2.2"
-            short: cu122
-          - python-version: "3.11"
-            cuda: "12.2.2"
-            short: cu122
-          - python-version: "3.12"
-            cuda: "12.2.2"
-            short: cu122
-          - python-version: "3.9"
-            cuda: "12.3.2"
-            short: cu123
-          - python-version: "3.10"
-            cuda: "12.3.2"
-            short: cu123
-          - python-version: "3.11"
-            cuda: "12.3.2"
-            short: cu123
-          - python-version: "3.12"
-            cuda: "12.3.2"
-            short: cu123
-          - python-version: "3.9"
-            cuda: "12.4.1"
-            short: cu124
-          - python-version: "3.10"
-            cuda: "12.4.1"
-            short: cu124
-          - python-version: "3.11"
-            cuda: "12.4.1"
-            short: cu124
-          - python-version: "3.12"
-            cuda: "12.4.1"
-            short: cu124
+          - cuda_full: "12.1.1"
+            cuda_short: cu121
+            container_image: nvidia/cuda:12.1.1-devel-ubuntu22.04
+          - cuda_full: "12.2.2"
+            cuda_short: cu122
+            container_image: nvidia/cuda:12.2.2-devel-ubuntu22.04
+          - cuda_full: "12.3.2"
+            cuda_short: cu123
+            container_image: nvidia/cuda:12.3.2-devel-ubuntu22.04
+          - cuda_full: "12.4.1"
+            cuda_short: cu124
+            container_image: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
+          - cuda_full: "12.6.3"
+            cuda_short: cu126
+            container_image: nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
 
     env:
-      CUDAVER: ${{ matrix.cuda }}
+      CUDAVER: ${{ matrix.cuda_full }}
+      CUDASHORT: ${{ matrix.cuda_short }}
 
     steps:
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential cmake git curl libssl-dev libjpeg-dev
+
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - name: Install uv and set Python version
+        uses: astral-sh/setup-uv@v6
         with:
+          python-version: ${{ matrix.pyver }}
           enable-cache: true
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
+      - name: Verify CUDA
+        run: nvcc -V
 
-      - name: Setup Mambaforge
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          activate-environment: llamacpp
-          python-version: ${{ matrix.python-version }}
-          miniforge-version: latest
-          add-pip-as-python-dependency: true
-          auto-activate-base: false
-
-      - name: Install CUDA toolkit and build tools
-        shell: bash
+      - name: Build wheel
         env:
-          MAMBA_DOWNLOAD_FAILFAST: "0"
-          MAMBA_NO_LOW_SPEED_LIMIT: "1"
+          VERBOSE: 1
+          LD_LIBRARY_PATH: /usr/local/cuda/lib64:/usr/local/cuda/compat:${LD_LIBRARY_PATH}
+          CUDA_HOME: /usr/local/cuda
+          CUDA_TOOLKIT_ROOT_DIR: /usr/local/cuda
+          CMAKE_ARGS: >-
+            -DGGML_CUDA=on
+            -DCMAKE_CUDA_ARCHITECTURES=75;80;86;89;90
+            -DGGML_CUDA_FORCE_MMQ=OFF
+            -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off
+            -DLLAMA_CURL=off -DLLAMA_OPENSSL=on -DLLAMA_HTTPLIB=on
         run: |
-          mamba install -y 'cuda' -c nvidia/label/cuda-${CUDAVER}
-          uv pip install --system -U build wheel cmake
+          uv pip install --system build setuptools wheel packaging
+          uv build --wheel
 
-      - name: Build wheel (CUDA ${{ matrix.short }})
-        shell: bash
-        run: |
-          export CUDA_PATH=$CONDA_PREFIX
-          export CUDA_HOME=$CONDA_PREFIX
-          export CUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX
-          export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-          export VERBOSE=1
-          export CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=75;80;86;89;90 -DGGML_CUDA_FORCE_MMQ=OFF -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off"
-          python -m build --wheel --outdir wheelhouse
+          # Rename wheel to standard format: +cuXXX.basic
+          cuda_short="${CUDASHORT#cu}"
+          wheel_file=$(ls dist/*.whl | head -n 1)
+          filename=$(basename "$wheel_file")
+          IFS='-' read -r name version py_tag abi_tag plat_tag <<< "$filename"
+          new_version="${version}+cu${cuda_short}.basic"
+          new_filename="${name}-${new_version}-${py_tag}-${abi_tag//.*/}-${plat_tag}"
+          mv "$wheel_file" "dist/$new_filename"
+          echo "Renamed to $new_filename"
 
       - name: List built wheels
-        shell: bash
-        run: |
-          ls -lh wheelhouse/*.whl
+        run: ls -lh dist/*.whl
 
       - name: Upload wheels as artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
-          name: wheel-cuda-${{ matrix.python-version }}-${{ matrix.short }}
-          path: wheelhouse/*.whl
+          name: wheel-cuda-${{ matrix.pyver }}-${{ matrix.cuda_short }}
+          path: dist/*.whl
+          retention-days: 7
+          if-no-files-found: error
