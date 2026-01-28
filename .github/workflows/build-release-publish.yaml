@@ -90,9 +90,13 @@ jobs:
             CMAKE_ARGS="-DGGML_CUDA=OFF -DGGML_METAL=OFF -DGGML_VULKAN=OFF -DGGML_BLAS=OFF -DGGML_NATIVE=OFF"
         run: cibuildwheel --output-dir wheelhouse
 
-      - name: List built wheels
-        run: |
-          ls -lh wheelhouse/*.whl || Get-ChildItem wheelhouse/*.whl
+      - name: List built wheels (Linux)
+        if: runner.os == 'Linux'
+        run: ls -lh wheelhouse/*.whl
+
+      - name: List built wheels (Windows)
+        if: runner.os == 'Windows'
+        run: Get-ChildItem wheelhouse/*.whl | Format-Table -AutoSize Name, Length, LastWriteTime
 
       - name: Upload wheels as artifact
         uses: actions/upload-artifact@v4
