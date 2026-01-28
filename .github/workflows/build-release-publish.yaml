@@ -58,7 +58,7 @@ jobs:
           - os: windows-latest
             platform: windows
             python-version: "3.13"
-            cibw_build: cp39-win_amd64 cp39-win32 cp310-win_amd64 cp310-win32 cp311-win_amd64 cp311-win32 cp312-win_amd64 cp312-win32 cp313-win_amd64 cp313-win32 cp314-win_amd64 cp314-win32
+            cibw_build: cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64 cp314-win_amd64
             cibw_skip: ""
             cibw_image: ""
             cibw_repair: ""
