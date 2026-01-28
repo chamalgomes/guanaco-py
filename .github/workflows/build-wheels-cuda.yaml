@@ -2,105 +2,124 @@ name: Build Wheels (CUDA)
 
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
 
 permissions:
   contents: write
 
 jobs:
-  build-cuda:
-    name: Build CUDA ${{ matrix.pyver }} ${{ matrix.cuda_short }}
+  build_linux:
     runs-on: ubuntu-latest
+    container:
+      image: nvidia/cuda:${{ matrix.cuda_config.image }}-cudnn-devel-ubuntu22.04
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        include:
-          - cuda_pkg: "12-1"
-            cuda_short: cu121
-            cuda_ver: "12.1"
-          - cuda_pkg: "12-2"
-            cuda_short: cu122
-            cuda_ver: "12.2"
-          - cuda_pkg: "12-3"
-            cuda_short: cu123
-            cuda_ver: "12.3"
-          - cuda_pkg: "12-4"
-            cuda_short: cu124
-            cuda_ver: "12.4"
-          - cuda_pkg: "12-6"
-            cuda_short: cu126
-            cuda_ver: "12.6"
-
+        cuda_config:
+          - image: 12.1.1
+            ver: 12.1.1
+            short: cu121
+            arch: 75;80;86;89;90
+          - image: 12.2.2
+            ver: 12.2.2
+            short: cu122
+            arch: 75;80;86;89;90
+          - image: 12.3.2
+            ver: 12.3.2
+            short: cu123
+            arch: 75;80;86;89;90
+          - image: 12.4.1
+            ver: 12.4.1
+            short: cu124
+            arch: 75;80;86;89;90
+          - image: 12.6.3
+            ver: 12.6.3
+            short: cu126
+            arch: 75;80;86;89;90;100
+          - image: 12.8.1
+            ver: 12.8.1
+            short: cu128
+            arch: 75;80;86;89;90;100
+    name: Linux CUDA ${{ matrix.cuda_config.ver }} Py ${{ matrix.pyver }}
     env:
-      CUDA_PKG: ${{ matrix.cuda_pkg }}
-      CUDA_SHORT: ${{ matrix.cuda_short }}
-      CUDA_VER: ${{ matrix.cuda_ver }}
+      CUDAVER: ${{ matrix.cuda_config.ver }}
 
     steps:
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake git curl libssl-dev libopenblas-dev
-
-      - name: Install CUDA Toolkit ${{ matrix.cuda_pkg }}
-        run: |
-          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
-          sudo dpkg -i cuda-keyring_1.1-1_all.deb
-          sudo apt-get update
-          sudo apt-get install -y cuda-toolkit-${CUDA_PKG}
-          echo "CUDA_HOME=/usr/local/cuda-${CUDA_VER}" >> $GITHUB_ENV
-          echo "/usr/local/cuda-${CUDA_VER}/bin" >> $GITHUB_PATH
-          echo "/usr/local/cuda-${CUDA_VER}/lib64" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VER}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+          apt update && apt install -y build-essential cmake git libssl-dev
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install uv and set Python
+      - name: Setup uv and Python
         uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.pyver }}
           enable-cache: true
 
       - name: Verify CUDA
-        run: |
-          nvcc --version
-          echo "CUDA path: $CUDA_HOME"
+        run: nvcc --version
 
       - name: Build wheel
         env:
           VERBOSE: 1
           CMAKE_ARGS: >-
             -DGGML_CUDA=on
-            -DCMAKE_CUDA_ARCHITECTURES=75;80;86;89;90
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.cuda_config.arch }}
             -DGGML_CUDA_FORCE_MMQ=OFF
             -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off
         run: |
-          uv pip install --system build setuptools wheel packaging
-          uv build --wheel
+          uv pip install --system build wheel setuptools packaging
+          python -m build --wheel
 
-          # Rename wheel to +cuXXX.basic
-          wheel_file=$(ls dist/*.whl | head -n 1)
-          filename=$(basename "$wheel_file")
-          name=$(echo "$filename" | cut -d- -f1)
-          version=$(echo "$filename" | cut -d- -f2)
-          rest=$(echo "$filename" | cut -d- -f3-)
-          new_version="${version}+${CUDA_SHORT}.basic"
-          new_filename="${name}-${new_version}-${rest}"
-          mv "$wheel_file" "dist/$new_filename"
-          echo "Renamed wheel to $new_filename"
-
-      - name: List built wheels
+      - name: List wheels
         run: ls -lh dist/*.whl
 
-      - name: Upload wheels as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheel-cuda-${{ matrix.pyver }}-${{ matrix.cuda_short }}
+          name: wheel-cuda-${{ matrix.pyver }}-${{ matrix.cuda_config.short }}
           path: dist/*.whl
-          retention-days: 7
-          if-no-files-found: error
+
+  build_windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    strategy:
+      fail-fast: false
+      matrix:
+        pyver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        cuda_config:
+          - ver: 12.4.1
+            short: cu124
+            arch: 75;80;86;89;90
+          - ver: 12.6.3
+            short: cu126
+            arch: 75;80;86;89;90;100
+          - ver: 12.8.1
+            short: cu128
+            arch: 75;80;86;89;90;100
+    name: Windows CUDA ${{ matrix.cuda_config.ver }} Py ${{ matrix.pyver }}
+    env:
+      CUDAVER: ${{ matrix.cuda_config.ver }}
+
+    steps:
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install CUDA toolkit
+        uses: N-Storm/cuda-toolkit@v0.2.29  # versión más reciente al momento
+        with:
+          cuda: ${{ matrix.cuda
