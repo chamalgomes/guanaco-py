@@ -42,48 +42,55 @@ Documentation is available at [https://llama-cpp-python.readthedocs.io/en/latest
 ## Installation
 
 **Requirements:**
-  - Python 3.8+
+  - Python 3.9+
   - C compiler
-      - Linux: gcc or clang
+      - Linux: GCC or Clang
       - Windows: Visual Studio or MinGW (MSYS2)
+  - CMake 3.21+
+  - Git
 
-**From Source**
-> [!NOTE]
-> You must have Git and a C compiler, or MingW with Git in the PATH installed.
+To install the package, run:
 
 ```bash
-pip install -U git+https://github.com/TheBigEye/guanaco-py
+pip install -U "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 
-If you want install from an specific release, by exmaple `v0.4.0`:
+or also:
+
 ```bash
-pip install -U git+https://github.com/TheBigEye/guanaco-py@v0.4.0
+git clone https://github.com/TheBigEye/guanaco-py --recursive
+cd guanaco-py
+python -m pip install -U pip
+pip install .
+```
+
+If you want install from an specific release, by exmaple `v0.5.0`:
+```bash
+pip install -U git+https://github.com/TheBigEye/guanaco-py@v0.5.0
 ```
 
 This will build `llama.cpp` from source and install it alongside this python package.
 
 If this fails, add `--verbose` to the `pip install` see the full cmake build log.
 
-**Pre-built Wheel (New)**
+**Pre-built Wheel **
 
 It is also possible to install a pre-built wheel with basic CPU support.
 
 ```bash
-pip install guanaco-py \
-  --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cpu
+pip install guanaco-py --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cpu
 ```
 
 > [!NOTE]
 > Sometimes I recommend running this in case Pip can't find any wheel.
 
 ```bash
-pip install guanaco-py \
-  --only-binary=:all: --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cpu/
+pip install guanaco-py --only-binary=:all: --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cpu/
 ```
 
 ### Installation Configuration
 
-`llama.cpp` supports a number of hardware acceleration backends to speed up inference as well as backend specific options. See the [llama.cpp README](https://github.com/ggerganov/llama.cpp#build) for a full list.
+`llama.cpp` supports a number of hardware acceleration backends to speed up inference as well as backend specific options. See the [llama.cpp build docs](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md) for a full list.
 
 All `llama.cpp` cmake build options can be set via the `CMAKE_ARGS` environment variable or via the `--config-settings / -C` cli flag during installation.
 
@@ -91,15 +98,15 @@ All `llama.cpp` cmake build options can be set via the `CMAKE_ARGS` environment 
 <summary>Environment Variables</summary>
 
 ```bash
-# Linux and Mac
+# Linux
 CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" \
-  pip install -U git+https://github.com/TheBigEye/guanaco-py
+  pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 
 ```powershell
 # Windows
 $env:CMAKE_ARGS = "-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
-pip install -U git+https://github.com/TheBigEye/guanaco-py
+pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 </details>
 
@@ -110,14 +117,14 @@ They can also be set via `pip install -C / --config-settings` command and saved 
 
 ```bash
 pip install --upgrade pip # ensure pip is up to date
-pip install -U git+https://github.com/TheBigEye/guanaco-py \
+pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git" \
   -C cmake.args="-DGGML_BLAS=ON;-DGGML_BLAS_VENDOR=OpenBLAS"
 ```
 
 ```txt
 # requirements.txt
 
-git+https://github.com/TheBigEye/guanaco-py --config-settings cmake.args="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
+git+https://github.com/TheBigEye/guanaco-py -C cmake.args="-DGGML_BLAS=ON;-DGGML_BLAS_VENDOR=OpenBLAS"
 ```
 
 </details>
@@ -132,25 +139,36 @@ Below are some common backends, their build commands and any additional environm
 To install with OpenBLAS, set the `GGML_BLAS` and `GGML_BLAS_VENDOR` environment variables before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install -U git+https://github.com/TheBigEye/guanaco-py
+CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 </details>
 
 <details>
 <summary>CUDA</summary>
 
-To install with CUDA support, set the `GGML_CUDA=on` environment variable before installing:
+Installing a CUDA-supported version requires the CUDA Toolkit environment to be installed first.
+
+See here: https://developer.nvidia.com/cuda-toolkit-archive
+
+Then, set the `GGML_CUDA=on` environment variable before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
+# Linux
+CMAKE_ARGS="-DGGML_CUDA=on" pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 
-**Pre-built Wheel (New)**
+```powershell
+# Windows
+$env:CMAKE_ARGS = "-DGGML_CUDA=on"
+pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
+```
+
+**Pre-built Wheel**
 
 It is also possible to install a pre-built wheel with CUDA support. As long as your system meets some requirements:
 
 - CUDA Version is 12.1, 12.2, 12.3 or 12.4
-- Python Version is 3.10, 3.11 or 3.12
+- Python Version is 3.9, 3.10, 3.11, 3.12 or 3.13
 
 ```bash
 pip install guanaco-py \
@@ -166,30 +184,41 @@ Where `<cuda-version>` is one of the following:
 For example, to install the CUDA 12.1 wheel:
 
 ```bash
-pip install guanaco-py \
-  --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cu121
+pip install guanaco-py --extra-index-url https://thebigeye.github.io/guanaco-py/whl/cu121
 ```
 
 </details>
 
 <details>
-<summary>hipBLAS (ROCm)</summary>
+<summary>HIP (ROCm)</summary>
 
-To install with hipBLAS / ROCm support for AMD cards, set the `GGML_HIPBLAS=on` environment variable before installing:
+This provides GPU acceleration on HIP-supported AMD GPUs. Make sure to have ROCm installed.
+
+You can download it from your Linux distro's package manager or from here: [ROCm Quick Start (Linux).](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/quick-start.html#rocm-install-quick)
+
+To install with HIP / ROCm support for AMD cards, set the `GGML_HIP=on` environment variable before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
+CMAKE_ARGS="-DGGML_HIP=ON -DGPU_TARGETS=gfx1030" pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
+> [!NOTE]
+> `GPU_TARGETS` is optional, omitting it will build the code for all GPUs in the current system.
+
+**More details see here:** [ggml-org/llama.cpp/build.md#hip](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#hip)
 
 </details>
 
 <details>
 <summary>Vulkan</summary>
 
+- For Windows User: Download and install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows) with the default settings.
+
+- For Linux User: Follow the official LunarG instructions for the installation and setup of the Vulkan SDK in the [Getting Started with the Linux Tarball Vulkan SDK](https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html) guide.
+
 To install with Vulkan support, set the `GGML_VULKAN=on` environment variable before installing:
 
 ```bash
-CMAKE_ARGS="-DGGML_VULKAN=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
+CMAKE_ARGS="-DGGML_VULKAN=on" pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 
 </details>
@@ -200,8 +229,8 @@ CMAKE_ARGS="-DGGML_VULKAN=on" pip install -U git+https://github.com/TheBigEye/gu
 To install with SYCL support, set the `GGML_SYCL=on` environment variable before installing:
 
 ```bash
-source /opt/intel/oneapi/setvars.sh   
-CMAKE_ARGS="-DGGML_SYCL=on -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install -U git+https://github.com/TheBigEye/guanaco-py
+source /opt/intel/oneapi/setvars.sh
+CMAKE_ARGS="-DGGML_SYCL=on -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 </details>
 
@@ -211,8 +240,8 @@ CMAKE_ARGS="-DGGML_SYCL=on -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip
 To install with RPC support, set the `GGML_RPC=on` environment variable before installing:
 
 ```bash
-source /opt/intel/oneapi/setvars.sh   
-CMAKE_ARGS="-DGGML_RPC=on" pip install -U git+https://github.com/TheBigEye/guanaco-py
+source /opt/intel/oneapi/setvars.sh
+CMAKE_ARGS="-DGGML_RPC=on" pip install "guanaco-py @ git+https://github.com/TheBigEye/guanaco-py.git"
 ```
 </details>
 
@@ -477,8 +506,16 @@ Below are the supported multi-modal models and their respective chat handlers (P
 | [moondream2](https://huggingface.co/vikhyatk/moondream2) | `MoondreamChatHandler` | `moondream2` |
 | [nanollava](https://huggingface.co/abetlen/nanollava-gguf) | `NanollavaChatHandler` | `nanollava` |
 | [llama-3-vision-alpha](https://huggingface.co/abetlen/llama-3-vision-alpha-gguf) | `Llama3VisionAlphaChatHandler` | `llama-3-vision-alpha` |
-| [minicpm-v-2.6](https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf) | `MiniCPMv26ChatHandler` | `minicpm-v-2.6` |
+| [minicpm-v-2.6](https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf) | `MiniCPMv26ChatHandler` | `minicpm-v-2.6`, `minicpm-v-4.0` |
+| [minicpm-v-4.5](https://huggingface.co/openbmb/MiniCPM-V-4_5-gguf) | `MiniCPMv45ChatHandler` | `minicpm-v-4.5` |
+| [gemma3](https://huggingface.co/unsloth/gemma-3-27b-it-GGUF) | `Gemma3ChatHandler` | `gemma3` |
+| [glm4.1v](https://huggingface.co/unsloth/GLM-4.1V-9B-Thinking-GGUF) | `GLM41VChatHandler` | `glm4.1v` |
+| [glm4.6v](https://huggingface.co/unsloth/GLM-4.6V-Flash-GGUF) | `GLM46VChatHandler` | `glm4.6v` |
+| [granite-docling](https://huggingface.co/ibm-granite/granite-docling-258M-GGUF) | `GraniteDoclingChatHandler` | `granite-docling` |
+| [lfm2-vl](https://huggingface.co/LiquidAI/LFM2-VL-3B-GGUF) | `LFM2VLChatHandler` | `lfm2-vl` |
 | [qwen2.5-vl](https://huggingface.co/unsloth/Qwen2.5-VL-3B-Instruct-GGUF) | `Qwen25VLChatHandler` | `qwen2.5-vl` |
+| [qwen3-vl](https://huggingface.co/unsloth/Qwen3-VL-8B-Thinking-GGUF) | `Qwen3VLChatHandler` | `qwen3-vl` |
+
 
 Then you'll need to use a custom chat handler to load the clip model and process the chat messages and images.
 
@@ -708,62 +745,6 @@ Check out the [examples folder](examples/low_level_api) for more examples of usi
 
 Documentation is available via [https://llama-cpp-python.readthedocs.io/](https://llama-cpp-python.readthedocs.io/).
 If you find any issues with the documentation, please open an issue or submit a PR.
-
-## Development
-
-This package is under active development and I welcome any contributions.
-
-To get started, clone the repository and install the package in editable / development mode:
-
-```bash
-git clone --recurse-submodules https://github.com/abetlen/llama-cpp-python.git
-cd llama-cpp-python
-
-# Upgrade pip (required for editable mode)
-pip install --upgrade pip
-
-# Install with pip
-pip install -e .
-
-# if you want to use the fastapi / openapi server
-pip install -e '.[server]'
-
-# to install all optional dependencies
-pip install -e '.[all]'
-
-# to clear the local build cache
-make clean
-```
-
-Now try running the tests
-
-```bash
-pytest
-```
-
-There's a `Makefile` available with useful targets.
-A typical workflow would look like this:
-
-```bash
-make build
-make test
-```
-
-You can also test out specific commits of `llama.cpp` by checking out the desired commit in the `vendor/llama.cpp` submodule and then running `make clean` and `pip install -e .` again. Any changes in the `llama.h` API will require
-changes to the `llama_cpp/llama_cpp.py` file to match the new API (additional changes may be required elsewhere).
-
-## FAQ
-
-### Are there pre-built binaries / binary wheels available?
-
-The recommended installation method is to install from source as described above.
-The reason for this is that `llama.cpp` is built with compiler optimizations that are specific to your system.
-Using pre-built binaries would require disabling these optimizations or supporting a large number of pre-built binaries for each platform.
-
-That being said there are some pre-built binaries available through the Releases as well as some community provided wheels.
-
-In the future, I would like to provide pre-built binaries and wheels for common platforms and I'm happy to accept any useful contributions in this area.
-This is currently being tracked in [#741](https://github.com/abetlen/llama-cpp-python/issues/741)
 
 ## License
 
