@@ -19,7 +19,7 @@ jobs:
             short: cu123
             arch: 86;89;90
           - ver: 13.1.1
-            short: cu124
+            short: cu131
             arch: 75;80;
         pyver: ["3.13", "3.14"]
     name: Linux CUDA ${{ matrix.cuda_config.ver }} Py ${{ matrix.pyver }}
