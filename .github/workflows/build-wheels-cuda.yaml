@@ -15,9 +15,9 @@ jobs:
       fail-fast: false
       matrix:
         cuda_config:
-          - ver: 12.3.2
-            short: cu123
-            arch: 86;89;90
+          - ver: 13.0.2
+            short: cu130
+            arch: 89;
           - ver: 13.1.1
             short: cu131
             arch: 75;80;
@@ -91,3 +91,14 @@ jobs:
         with:
           name: wheel-cuda-${{ matrix.pyver }}-${{ matrix.cuda_config.short }}
           path: dist/*.whl
+
+      - uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
+        with:
+          files: dist/*.whl
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: 'dist/*.whl'
