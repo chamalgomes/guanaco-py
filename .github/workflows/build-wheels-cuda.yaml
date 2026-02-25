@@ -10,24 +10,18 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     container:
-      image: nvidia/cuda:${{ matrix.cuda_config.ver }}-devel-ubuntu22.04
+      image: nvidia/cuda:${{ matrix.cuda_config.ver }}-devel-ubuntu24.04
     strategy:
       fail-fast: false
       matrix:
         cuda_config:
-          - ver: 12.1.1
-            short: cu121
-            arch: 75;80;86;89;90
-          - ver: 12.2.2
-            short: cu122
-            arch: 75;80;86;89;90
           - ver: 12.3.2
             short: cu123
-            arch: 75;80;86;89;90
-          - ver: 12.4.1
+            arch: 86;89;90
+          - ver: 13.1.1
             short: cu124
-            arch: 75;80;86;89;90
-        pyver: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+            arch: 75;80;
+        pyver: ["3.13", "3.14"]
     name: Linux CUDA ${{ matrix.cuda_config.ver }} Py ${{ matrix.pyver }}
     steps:
       - name: Install system dependencies
