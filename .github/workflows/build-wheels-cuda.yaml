@@ -79,6 +79,7 @@ jobs:
             -DLLAMA_BUILD_EXAMPLES=OFF
             -DLLAMA_BUILD_TESTS=OFF
             -DLLAMA_BUILD_SERVER=OFF
+            -DLLAVA_BUILD=off
             -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/cuda/lib64/stubs -lcuda"
         run: python -m build --wheel
 
